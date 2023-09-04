@@ -1,0 +1,34 @@
+particles = {
+    "particle/particle_flares/particle_flare_gray",
+    "particle/smoke1/smoke1_nearcull2",
+    "particle/vistasmokev1/vistasmokev1_nearcull",
+    "particle/smoke1/smoke1_nearcull",
+    "particle/vistasmokev1/vistasmokev1_nearcull_nodepth",
+    "particle/vistasmokev1/vistasmokev1_nearcull_fog",
+    "particle/vistasmokev1/vistasmokev4_nearcull",
+    "particle/smoke1/smoke1_nearcull3",
+    "particle/fire_burning_character/fire_env_fire_depthblend_oriented",
+    "particle/fire_burning_character/fire_burning_character",
+    "particle/fire_explosion_1/fire_explosion_1_oriented",
+    "particle/fire_explosion_1/fire_explosion_1_bright",
+    "particle/fire_burning_character/fire_burning_character_depthblend",
+    "particle/fire_burning_character/fire_env_fire_depthblend",
+}
+
+create = ui.create('Particles')
+
+switch = create:switch('Molotov Particles')
+
+
+handle = function()
+    for _, v in pairs(particles) do
+        local material = materials.get(v)
+
+        if material ~= nil then
+            material:var_flag(28, switch:get())
+            material:var_flag(15)
+        end
+    end
+end
+
+events.pre_render:set(handle)
