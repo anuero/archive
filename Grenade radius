@@ -1,0 +1,130 @@
+local create = ui.create('Grenade radius')
+local switch = create:switch('Grenade radius', false)
+local swith_create = switch:create()
+local radius_color_molotov = swith_create:color_picker('Molotov Color', color(255, 63, 63,180))
+local radius_color_smoke = swith_create:color_picker('Smoke Color', color(61, 147, 250, 180))
+
+local draw = new_class()
+:struct 'grenade_radius' {
+
+    geti = function(self)
+
+        local player = entity.get_local_player()
+        if player == nil then
+            return
+        end
+    
+        local CSmokeGrenadeProjectile = entity.get_entities("CSmokeGrenadeProjectile")
+        local CInferno = entity.get_entities("CInferno")
+        local is_not_friendly_fire = cvar.mp_friendlyfire:int() == 0
+    
+        local smoke = {}
+        local molotov = {}
+    
+        local tickcount = globals.tickcount
+        local tickinterval = globals.tickinterval
+    
+        if CSmokeGrenadeProjectile ~= nil then
+            for k, v in pairs(CSmokeGrenadeProjectile) do
+                if smoke[k] == nil then
+                    smoke[k] = {}
+                    smoke[k].position = vector(0, 0, 0)
+                    smoke[k].alpha = 0
+                    smoke[k].draw = false
+                end
+    
+                smoke[k].position = v:get_origin()
+                smoke[k].alpha = v:get_bbox().alpha*255
+    
+                if v.m_bDidSmokeEffect and v:get_bbox().alpha > 0 then
+                    smoke[k].draw = true
+                end
+            end
+        end
+    
+        if CInferno ~= nil then
+            for k, v in pairs(CInferno) do
+                if molotov[k] == nil then
+                    molotov[k] = {}
+                    molotov[k].position = vector(0, 0, 0)
+                    molotov[k].alpha = 0
+                    molotov[k].draw = false
+                    molotov[k].teammate = false
+                end
+    
+                local percentage = (7.125 -  tickinterval * (tickcount - v.m_nFireEffectTickBegin))/7.125
+                molotov[k].position = v:get_origin()
+                molotov[k].alpha = percentage*255
+    
+                local m_hOwnerEntity = v.m_hOwnerEntity
+    
+                if m_hOwnerEntity ~= nil and is_not_friendly_fire and m_hOwnerEntity ~= player and not m_hOwnerEntity:is_enemy() then
+                    molotov[k].teammate = true
+                end
+    
+                local cells = {}
+                local highest_distance = 100
+                for i = 1, 64 do
+                    if v.m_bFireIsBurning[i] then
+                        table.insert(cells, {v.m_fireXDelta[i], v.m_fireYDelta[i], v.m_fireZDelta[i]})
+                    end
+                end
+    
+                for i = 1, #cells do
+                    local cell = cells[i]
+                    local x_delta, y_delta, z_delta = unpack(cell)
+    
+                    for i2 = 1, #cells do
+                        local cell2 = cells[i2]
+                        local distance = vector(x_delta, y_delta):dist(vector(cell2[1], cell2[2]))
+                        if distance > highest_distance then
+                            highest_distance = distance
+                        end
+                    end
+                end
+    
+                if percentage > 0 then
+                    molotov[k].draw = true
+                    molotov[k].radius = highest_distance/2 + 40
+                end
+            end
+        end
+    
+        return {smoke = smoke, molotov = molotov}
+
+    end,
+
+    handle = function(self)
+
+        local r, g, b, a = radius_color_molotov:get().r,radius_color_molotov:get().g,radius_color_molotov:get().b,radius_color_molotov:get().a
+        local r1, g1, b1, a1 = radius_color_smoke:get().r,radius_color_smoke:get().g,radius_color_smoke:get().b,radius_color_smoke:get().a
+        local grenade = self:geti()
+        if grenade == nil then
+            return
+        end
+
+        if switch:get() then
+            for i = 1, #grenade.molotov do
+                local i = grenade.molotov[i]
+                render.text(1, render.world_to_screen(i.position), (i.teammate and color(255,255,255,255) or color(255,255,255,255)), nil, i.teammate and "✔" or "❌")
+                render.circle_3d_outline(i.position, color(r, g, b, i.alpha), i.radius, 0,1,1)
+            end
+        end
+        for i = 1, #grenade.smoke do
+            local i = grenade.smoke[i]
+            if i.draw and switch:get() then
+                render.circle_3d_outline(i.position,color(r1,g1,b1,i.alpha), 125, 0,1)       
+            end
+        end
+    end,
+
+}
+
+events.render:set(function()
+
+    if switch:get() then
+    draw.grenade_radius:handle()
+    end
+    
+end)
+
